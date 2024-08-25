@@ -1,0 +1,9 @@
+{
+  "platforms": ["ios", "tvos", "android", "web"],
+  "ios": {
+    "modules": ["MultipleAlarmsModule"]
+  },
+  "android": {
+    "modules": ["expo.modules.multipleAlarms.MultipleAlarmsModule"]
+  }
+}
