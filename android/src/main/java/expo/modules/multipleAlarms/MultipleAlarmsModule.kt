@@ -16,6 +16,22 @@ import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 
+import android.app.Activity
+import android.os.Bundle
+import android.widget.TextView
+
+class HelloWorldActivity : Activity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        
+        val textView = TextView(this)
+        textView.text = "Hello World"
+        textView.textSize = 30f
+        
+        setContentView(textView)
+    }
+}
+
 class MultipleAlarmsModule : Module() {
 
   override fun definition() = ModuleDefinition {
@@ -101,8 +117,20 @@ class AlarmReceiver : BroadcastReceiver() {
 
         context?.let {
         Log.d("AlarmsModule", "Alarm context --> $context ")
-            showNotification(it, hourMinute, message, notificationId)
+            // showNotification(it, hourMinute, message, notificationId)
+            launchHelloWorldScreen(it)
         }
+    }
+      private fun launchHelloWorldScreen(context: Context) {
+        val intent = Intent(context, HelloWorldActivity::class.java)
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        context.startActivity(intent)
+    }
+
+    private fun openAppOnAlarmRoute(context: Context) {
+        val intent = Intent(context, HelloWorldActivity::class.java)
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        context.startActivity(intent)
     }
 
     private fun showNotification(context: Context, hourMinute: String, message: String, notificationId: Int) {
