@@ -29,6 +29,7 @@ import java.text.SimpleDateFormat
 class HelloWorldActivity : Activity() {
     private lateinit var timeTextView: TextView
     private val handler = Handler()
+    private var mediaPlayer: MediaPlayer? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -44,11 +45,15 @@ class HelloWorldActivity : Activity() {
 
         // Set up dismiss button
         dismissButton.setOnClickListener {
+            stopAlarmAudio()
             finish()
         }
 
         // Start updating the time
         startUpdatingTime()
+
+        // Start playing alarm sound
+        playAlarmAudio()
     }
 
     override fun onNewIntent(intent: Intent?) {
@@ -74,8 +79,24 @@ class HelloWorldActivity : Activity() {
         })
     }
 
+    private fun playAlarmAudio() {
+        // Initialize MediaPlayer and start playing an alarm sound
+        mediaPlayer = MediaPlayer.create(this, R.raw.funkyard)  // Make sure you have an alarm_sound.mp3 in res/raw folder
+        mediaPlayer?.isLooping = true
+        mediaPlayer?.start()
+    }
+
+    private fun stopAlarmAudio() {
+        mediaPlayer?.stop()
+        mediaPlayer?.release()
+        mediaPlayer = null
+    }
+
     override fun onDestroy() {
         super.onDestroy()
+        // Stop the alarm audio when the activity is destroyed
+        stopAlarmAudio()
+
         // Remove callbacks when activity is destroyed to prevent memory leaks
         handler.removeCallbacksAndMessages(null)
     }
@@ -154,7 +175,6 @@ class MultipleAlarmsModule : Module() {
         alarmManager.cancel(pendingIntent)
     }
 }
-
 class AlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context?, intent: Intent?) {
         val message = intent?.getStringExtra("ALARM_MESSAGE") ?: "Alarm!"
@@ -162,61 +182,40 @@ class AlarmReceiver : BroadcastReceiver() {
         val hour = intent?.getIntExtra("ALARM_HOUR", 0) ?: 0
         val minute = intent?.getIntExtra("ALARM_MINUTE", 0) ?: 0
 
-        Log.d("AlarmsModule", "Alarm triggered: $message -- $notificationId")
-
-        val hourMinute = String.format("%02d:%02d", hour, minute)
-
         context?.let {
-        Log.d("AlarmsModule", "Alarm context --> $context ")
-            // showNotification(it, hourMinute, message, notificationId)
-            launchAlarmScreen(it, message)
-
+            showFullScreenNotification(it, hour, minute, message, notificationId)
         }
     }
 
-   private fun launchAlarmScreen(context: Context, message: String) {
-    // Create an intent to check if HelloWorldActivity is already running
-    val intent = Intent(context, HelloWorldActivity::class.java).apply {
-        putExtra("ALARM_MESSAGE", message)
-        // Set flags to bring the activity to the front if it's already running
-        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-    }
-
-    // Start the activity
-    context.startActivity(intent)
-}
-
-      private fun launchHelloWorldScreen(context: Context) {
-        val intent = Intent(context, HelloWorldActivity::class.java)
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        context.startActivity(intent)
-    }
-
-    private fun openAppOnAlarmRoute(context: Context) {
-        val intent = Intent(context, HelloWorldActivity::class.java)
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        context.startActivity(intent)
-    }
-
-    private fun showNotification(context: Context, hourMinute: String, message: String, notificationId: Int) {
+    private fun showFullScreenNotification(context: Context, hour: Int, minute: Int, message: String, notificationId: Int) {
         val channelId = "alarm_channel"
         val channelName = "Alarm Notifications"
 
+        val fullScreenIntent = Intent(context, HelloWorldActivity::class.java).apply {
+            putExtra("ALARM_MESSAGE", message)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val fullScreenPendingIntent = PendingIntent.getActivity(context, 0, fullScreenIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+
+        val notificationBuilder = NotificationCompat.Builder(context, channelId)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setContentTitle("Alarm")
+            .setContentText("Time: ${String.format("%02d:%02d", hour, minute)}\n$message")
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setFullScreenIntent(fullScreenPendingIntent, true)
+            .setAutoCancel(true)
+
+        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(channelId, channelName, NotificationManager.IMPORTANCE_HIGH)
-            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            val channel = NotificationChannel(channelId, channelName, NotificationManager.IMPORTANCE_HIGH).apply {
+                enableLights(true)
+                enableVibration(true)
+            }
             notificationManager.createNotificationChannel(channel)
         }
 
-        val builder = NotificationCompat.Builder(context, channelId)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentTitle("Alarm")
-            .setContentText("Time: $hourMinute\n$message")
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setAutoCancel(true)
-
-        with(NotificationManagerCompat.from(context)) {
-            notify(notificationId, builder.build())
-        }
+        notificationManager.notify(notificationId, notificationBuilder.build())
     }
 }
