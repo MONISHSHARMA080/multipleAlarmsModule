@@ -19,6 +19,7 @@ import androidx.core.app.NotificationManagerCompat
 import android.app.Activity
 import android.os.Bundle
 import android.widget.TextView
+import android.os.Handler
 
 
 
@@ -29,18 +30,16 @@ import java.text.SimpleDateFormat
 
 
 class HelloWorldActivity : Activity() {
+    private lateinit var timeTextView: TextView
+    private val handler = Handler()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_alarm)
 
-        val timeTextView = findViewById<TextView>(R.id.timeTextView)
+        timeTextView = findViewById(R.id.timeTextView)
         val messageTextView = findViewById<TextView>(R.id.messageTextView)
         val dismissButton = findViewById<Button>(R.id.dismissButton)
-
-        // Set the current time
-        val sdf = SimpleDateFormat("HH:mm", Locale.getDefault())
-        val currentTime = sdf.format(Date())
-        timeTextView.text = currentTime
 
         // Get and set the alarm message
         val message = intent.getStringExtra("ALARM_MESSAGE") ?: "Alarm!"
@@ -50,8 +49,31 @@ class HelloWorldActivity : Activity() {
         dismissButton.setOnClickListener {
             finish()
         }
+
+        // Start updating the time
+        startUpdatingTime()
+    }
+
+    private fun startUpdatingTime() {
+        handler.post(object : Runnable {
+            override fun run() {
+                val sdf = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
+                val currentTime = sdf.format(Date())
+                timeTextView.text = currentTime
+
+                // Update every second
+                handler.postDelayed(this, 1000)
+            }
+        })
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        // Remove callbacks when activity is destroyed to prevent memory leaks
+        handler.removeCallbacksAndMessages(null)
     }
 }
+
 
 class MultipleAlarmsModule : Module() {
 
