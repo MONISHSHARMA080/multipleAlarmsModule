@@ -5,7 +5,7 @@ import * as MultipleAlarms from 'multiplealarms';
 export default function App() {
   return (
     <View style={styles.container}>
-      <Button title='Set  Alarm' 
+      <Button title='Set ---- Alarm' 
       onPress={()=>{
         let dateObj = new Date
         for (let i = 1; i < 3; i++) {
