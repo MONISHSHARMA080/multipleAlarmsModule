@@ -20,15 +20,36 @@ import android.app.Activity
 import android.os.Bundle
 import android.widget.TextView
 
+
+
+
+import android.widget.Button
+import java.text.SimpleDateFormat
+
+
+
 class HelloWorldActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
-        val textView = TextView(this)
-        textView.text = "Hello World"
-        textView.textSize = 30f
-        
-        setContentView(textView)
+        setContentView(R.layout.activity_alarm)
+
+        val timeTextView = findViewById<TextView>(R.id.timeTextView)
+        val messageTextView = findViewById<TextView>(R.id.messageTextView)
+        val dismissButton = findViewById<Button>(R.id.dismissButton)
+
+        // Set the current time
+        val sdf = SimpleDateFormat("HH:mm", Locale.getDefault())
+        val currentTime = sdf.format(Date())
+        timeTextView.text = currentTime
+
+        // Get and set the alarm message
+        val message = intent.getStringExtra("ALARM_MESSAGE") ?: "Alarm!"
+        messageTextView.text = message
+
+        // Set up dismiss button
+        dismissButton.setOnClickListener {
+            finish()
+        }
     }
 }
 
@@ -118,9 +139,19 @@ class AlarmReceiver : BroadcastReceiver() {
         context?.let {
         Log.d("AlarmsModule", "Alarm context --> $context ")
             // showNotification(it, hourMinute, message, notificationId)
-            launchHelloWorldScreen(it)
+            launchAlarmScreen(it, message)
+
         }
     }
+
+    private fun launchAlarmScreen(context: Context, message: String) {
+        val intent = Intent(context, HelloWorldActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            putExtra("ALARM_MESSAGE", message)
+        }
+        context.startActivity(intent)
+    }
+
       private fun launchHelloWorldScreen(context: Context) {
         val intent = Intent(context, HelloWorldActivity::class.java)
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
