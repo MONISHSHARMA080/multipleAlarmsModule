@@ -28,7 +28,6 @@ import android.widget.Button
 import java.text.SimpleDateFormat
 
 
-
 class HelloWorldActivity : Activity() {
     private lateinit var timeTextView: TextView
     private val handler = Handler()
@@ -52,6 +51,16 @@ class HelloWorldActivity : Activity() {
 
         // Start updating the time
         startUpdatingTime()
+    }
+
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        intent?.let {
+            // Update the activity's UI with the new message
+            val message = it.getStringExtra("ALARM_MESSAGE") ?: "Alarm!"
+            val messageTextView = findViewById<TextView>(R.id.messageTextView)
+            messageTextView.text = message
+        }
     }
 
     private fun startUpdatingTime() {
@@ -147,6 +156,7 @@ class MultipleAlarmsModule : Module() {
         alarmManager.cancel(pendingIntent)
     }
 }
+
 class AlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context?, intent: Intent?) {
         val message = intent?.getStringExtra("ALARM_MESSAGE") ?: "Alarm!"
@@ -166,13 +176,17 @@ class AlarmReceiver : BroadcastReceiver() {
         }
     }
 
-    private fun launchAlarmScreen(context: Context, message: String) {
-        val intent = Intent(context, HelloWorldActivity::class.java).apply {
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            putExtra("ALARM_MESSAGE", message)
-        }
-        context.startActivity(intent)
+   private fun launchAlarmScreen(context: Context, message: String) {
+    // Create an intent to check if HelloWorldActivity is already running
+    val intent = Intent(context, HelloWorldActivity::class.java).apply {
+        putExtra("ALARM_MESSAGE", message)
+        // Set flags to bring the activity to the front if it's already running
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
     }
+
+    // Start the activity
+    context.startActivity(intent)
+}
 
       private fun launchHelloWorldScreen(context: Context) {
         val intent = Intent(context, HelloWorldActivity::class.java)

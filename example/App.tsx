@@ -9,7 +9,7 @@ export default function App() {
       onPress={()=>{
         let dateObj = new Date
         for (let i = 1; i < 3; i++) {
-          MultipleAlarms.setAlarm(dateObj.getHours(),dateObj.getMinutes()+i,"*&#B*&B@",i)
+          MultipleAlarms.setAlarm(dateObj.getHours(),dateObj.getMinutes()+i,"*-----@>> "+String(i),i)
         }
       }}
        />
