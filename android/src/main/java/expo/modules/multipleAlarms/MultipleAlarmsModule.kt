@@ -24,6 +24,11 @@ import java.text.SimpleDateFormat
 import android.media.AudioAttributes
 import android.net.Uri
 import android.os.PowerManager
+import 	androidx.core.app.ActivityCompat
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
+
 
 class HelloWorldActivity : Activity() {
     private lateinit var timeTextView: TextView
@@ -119,7 +124,28 @@ class MultipleAlarmsModule : Module() {
 
     private val context get() = requireNotNull(appContext.reactContext)
 
-    private fun setAlarm(hour: Int, minutes: Int, message: String, requestCode: Int) {
+     private fun setAlarm(hour: Int, minutes: Int, message: String, requestCode: Int) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                // Request the permission
+                val currentActivity = appContext.currentActivity
+                if (currentActivity != null) {
+                    ActivityCompat.requestPermissions(
+                        currentActivity,
+                        arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                        NOTIFICATION_PERMISSION_REQUEST_CODE
+                    )
+                } else {
+                    Log.e("MultipleAlarmsModule", "Unable to request permission: no current activity")
+                }
+                // You might want to return here and set the alarm only after permission is granted
+                return
+            }
+        }
    val calendar = Calendar.getInstance().apply {
         set(Calendar.HOUR_OF_DAY, hour)
         set(Calendar.MINUTE, minutes)
@@ -159,6 +185,9 @@ class MultipleAlarmsModule : Module() {
         )
     }
 }
+ companion object {
+        private const val NOTIFICATION_PERMISSION_REQUEST_CODE = 1001
+    }
 
 
     private fun cancelAlarm(requestCode: Int) {
