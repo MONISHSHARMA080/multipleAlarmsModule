@@ -1,5 +1,6 @@
 package expo.modules.multipleAlarms
 
+
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import android.content.Context
@@ -12,19 +13,17 @@ import android.util.Log
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.BroadcastReceiver
-import android.widget.Toast
 import androidx.core.app.NotificationCompat
-import androidx.core.app.NotificationManagerCompat
-
 import android.app.Activity
 import android.os.Bundle
 import android.widget.TextView
 import android.os.Handler
-import 	android.media.MediaPlayer
-
+import android.media.MediaPlayer
 import android.widget.Button
 import java.text.SimpleDateFormat
-
+import android.media.AudioAttributes
+import android.net.Uri
+import android.os.PowerManager
 
 class HelloWorldActivity : Activity() {
     private lateinit var timeTextView: TextView
@@ -81,7 +80,7 @@ class HelloWorldActivity : Activity() {
 
     private fun playAlarmAudio() {
         // Initialize MediaPlayer and start playing an alarm sound
-        mediaPlayer = MediaPlayer.create(this, R.raw.funkyard)  // Make sure you have an alarm_sound.mp3 in res/raw folder
+        mediaPlayer = MediaPlayer.create(this, R.raw.funkyard)  
         mediaPlayer?.isLooping = true
         mediaPlayer?.start()
     }
@@ -175,47 +174,77 @@ class MultipleAlarmsModule : Module() {
         alarmManager.cancel(pendingIntent)
     }
 }
-class AlarmReceiver : BroadcastReceiver() {
-    override fun onReceive(context: Context?, intent: Intent?) {
-        val message = intent?.getStringExtra("ALARM_MESSAGE") ?: "Alarm!"
-        val notificationId = intent?.getIntExtra("NOTIFICATION_ID", 0) ?: 0
-        val hour = intent?.getIntExtra("ALARM_HOUR", 0) ?: 0
-        val minute = intent?.getIntExtra("ALARM_MINUTE", 0) ?: 0
 
-        context?.let {
-            showFullScreenNotification(it, hour, minute, message, notificationId)
-        }
+class AlarmReceiver : BroadcastReceiver() {
+     override fun onReceive(context: Context, intent: Intent) {
+        val message = intent.getStringExtra("ALARM_MESSAGE") ?: "Alarm!"
+        val notificationId = intent.getIntExtra("NOTIFICATION_ID", 0)
+        val hour = intent.getIntExtra("ALARM_HOUR", 0)
+        val minute = intent.getIntExtra("ALARM_MINUTE", 0)
+
+        showFullScreenNotification(context, hour, minute, message, notificationId)
     }
 
     private fun showFullScreenNotification(context: Context, hour: Int, minute: Int, message: String, notificationId: Int) {
-        val channelId = "alarm_channel"
-        val channelName = "Alarm Notifications"
+    val channelId = "alarm_channel"
+    val channelName = "Alarm Notifications"
+    val importance = NotificationManager.IMPORTANCE_HIGH
 
-        val fullScreenIntent = Intent(context, HelloWorldActivity::class.java).apply {
-            putExtra("ALARM_MESSAGE", message)
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-        }
-        val fullScreenPendingIntent = PendingIntent.getActivity(context, 0, fullScreenIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+    val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
-        val notificationBuilder = NotificationCompat.Builder(context, channelId)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentTitle("Alarm")
-            .setContentText("Time: ${String.format("%02d:%02d", hour, minute)}\n$message")
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setCategory(NotificationCompat.CATEGORY_ALARM)
-            .setFullScreenIntent(fullScreenPendingIntent, true)
-            .setAutoCancel(true)
+    // Define the sound URI, ideally use a file-based URI or ensure that the resource URI is consistent across app versions
+    val alarmSound = Uri.parse("android.resource://${context.packageName}/${R.raw.funkyard}")
 
-        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+    // Check if the notification channel already exists
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        var channel = notificationManager.getNotificationChannel(channelId)
+        if (channel == null) {
+            // Only create the channel if it doesn't exist
+            val audioAttributes = AudioAttributes.Builder()
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .setUsage(AudioAttributes.USAGE_ALARM)
+                .build()
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(channelId, channelName, NotificationManager.IMPORTANCE_HIGH).apply {
-                enableLights(true)
-                enableVibration(true)
+            channel = NotificationChannel(channelId, channelName, importance).apply {
+                description = "Channel for Alarm Notifications"
+                setSound(alarmSound, audioAttributes)
             }
             notificationManager.createNotificationChannel(channel)
+        } else {
+            Log.d("NotificationChannel", "Channel already exists with ID: $channelId")
         }
-
-        notificationManager.notify(notificationId, notificationBuilder.build())
     }
+
+    val fullScreenIntent = Intent(context, HelloWorldActivity::class.java).apply {
+        putExtra("ALARM_MESSAGE", message)
+        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+    }
+    val fullScreenPendingIntent = PendingIntent.getActivity(
+        context, 0, fullScreenIntent, 
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+    )
+
+    val notificationBuilder = NotificationCompat.Builder(context, channelId)
+        .setSmallIcon(android.R.drawable.ic_dialog_info)
+        .setContentTitle("Alarm")
+        .setContentText("Time: ${String.format("%02d:%02d", hour, minute)}\n$message")
+        .setPriority(NotificationCompat.PRIORITY_HIGH)
+        .setCategory(NotificationCompat.CATEGORY_ALARM)
+        .setFullScreenIntent(fullScreenPendingIntent, true)
+        .setAutoCancel(true)
+        .setOngoing(true)
+
+    // Set the sound for notifications on devices below Android O
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+        notificationBuilder.setSound(alarmSound)
+    }
+
+    notificationManager.notify(notificationId, notificationBuilder.build())
+
+    // Ensure the device is awake
+    val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+    val wakeLock = powerManager.newWakeLock(PowerManager.FULL_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP, "MyApp::MyWakelockTag")
+    wakeLock.acquire(10*60*1000L /*10 minutes*/)
+    wakeLock.release()
+}
 }

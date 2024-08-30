@@ -9,7 +9,9 @@ export default function App() {
       onPress={()=>{
         let dateObj = new Date
         for (let i = 1; i < 3; i++) {
-          MultipleAlarms.setAlarm(dateObj.getHours(),dateObj.getMinutes()+i,"*-----@>> "+String(i),i)
+          MultipleAlarms.setAlarm(dateObj.getHours(),dateObj.getMinutes()+i,"*--|||---@>> "+String(i),i)
+          console.log("Setting a alarm for ->",dateObj.getHours(),":",dateObj.getMinutes()+i);
+          
         }
       }}
        />
